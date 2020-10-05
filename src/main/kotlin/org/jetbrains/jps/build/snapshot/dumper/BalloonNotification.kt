@@ -9,8 +9,8 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
 import java.io.File
 
-class BalloonNotification(var project: Project) {
-    private val title = "New prebuilt version of master is ready to use"
+class BalloonNotification {
+    private val title = "JPS Build Snapshot successfully dumped"
     private val displayId = "KotlinJpsBuildSnapshotDumper"
     private val notificationGroup = NotificationGroup(displayId, NotificationDisplayType.BALLOON, true)
 

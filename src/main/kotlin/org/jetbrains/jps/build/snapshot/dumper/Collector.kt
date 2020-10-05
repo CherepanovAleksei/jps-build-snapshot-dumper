@@ -59,7 +59,7 @@ class Collector(private val project: Project) {
             val zipFile = File(projectPath, "jps_build_snapshot_" + UUID.randomUUID().toString() + ".zip")
             Zipper.zip(zipFile, tempDir)
 
-            BalloonNotification(project).showBalloon(zipFile.absolutePath)
+            BalloonNotification().showBalloon(zipFile.absolutePath)
         } finally {
             tempDir.deleteRecursively()
         }
