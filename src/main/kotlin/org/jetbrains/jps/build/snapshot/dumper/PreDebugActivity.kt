@@ -8,6 +8,6 @@ class PreDebugActivity : StartupActivity {
     private val LOG = Logger.getInstance("org.jetbrains.jps.build.snapshot.dumper.InitialActivity")
 
     override fun runActivity(project: Project) {
-        Collector(project).collect()
+        Collector(project).collectInBackground()
     }
 }

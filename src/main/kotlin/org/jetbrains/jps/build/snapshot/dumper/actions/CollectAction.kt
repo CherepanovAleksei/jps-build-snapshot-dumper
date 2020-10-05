@@ -6,6 +6,6 @@ import org.jetbrains.jps.build.snapshot.dumper.Collector
 
 class CollectAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
-        Collector(e.project!!).collect()
+        Collector(e.project!!).collectInBackground()
     }
 }

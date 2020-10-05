@@ -11,6 +11,10 @@ import com.intellij.openapi.application.ex.ApplicationInfoEx
 import com.intellij.openapi.application.impl.ApplicationInfoImpl
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.extensions.ExtensionPointName
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
+import com.intellij.openapi.progress.impl.BackgroundableProcessIndicator
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.io.FileUtil
@@ -33,7 +37,19 @@ class Collector(private val project: Project) {
     private val LOG = Logger.getInstance("org.jetbrains.jps.build.snapshot.dumper.Collector")
     private val projectPath = project.basePath
 
-    fun collect() {
+    fun collectInBackground() {
+        val task = object : Task.Backgroundable(project, "Collecting info about JPS build") {
+            override fun run(indicator: ProgressIndicator) {
+                collect()
+            }
+        }
+
+        val processIndicator = BackgroundableProcessIndicator(task)
+        processIndicator.isIndeterminate = true
+        ProgressManager.getInstance().runProcessWithProgressAsynchronously(task, processIndicator)
+    }
+
+    private fun collect() {
         val tempDir: File = FileUtil.createTempDirectory("jps_build_snapshot", ".tmp", true)
         try {
             copyProjectDirsTo(tempDir)
@@ -64,7 +80,6 @@ class Collector(private val project: Project) {
     }
 
     private fun copyCachesTo(tempDir: File) {
-        val asd = BuildManager.getInstance()
         val caches = File(BuildManager.getInstance().getProjectSystemDirectory(project)?.absolutePath!!)
         if(!caches.exists()) {
             LOG.debug("Caches dir does not exists: skip it")
@@ -92,6 +107,7 @@ class Collector(private val project: Project) {
         val content = getAboutInfo() + getExtraInfo()
         LOG.debug(content)
         aboutFile.writeText(content)
+        LOG.debug("AboutInfo file is added")
     }
 
     private fun getAboutInfo(): String? {
