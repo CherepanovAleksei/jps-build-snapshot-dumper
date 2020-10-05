@@ -8,7 +8,7 @@
     <br/>
     <ul>
         <li>Create zip archive with all JPS Build artifacts in the root of the project <i>(Tools -> Debug JPS Build -> Dump JPS Build Snapshot)</i></li>
-        <li>Enable JPS Logging <i>(Tools -> Debug JPS Build -> Enable JPS Build Logging)</i></li>
+        <li>Clean build logs folder and enable JPS Logging <i>(Tools -> Debug JPS Build -> Reset Logs and Enable JPS Build Logging)</i></li>
     </ul>
     Also you can find it via Actions
     ]]></description>
@@ -33,7 +33,7 @@
             </action>
             <action id="org.jetbrains.jps.build.snapshot.dumper.actions.EnableLoggingAction"
                     class="org.jetbrains.jps.build.snapshot.dumper.actions.EnableLoggingAction"
-                    text="Enable JPS Build Logging">
+                    text="Reset Logs and Enable JPS Build Logging">
             </action>
         </group>
     </actions>
