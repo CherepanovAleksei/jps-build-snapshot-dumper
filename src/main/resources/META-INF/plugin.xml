@@ -1,7 +1,7 @@
 <idea-plugin>
-    <id>org.example.jps-build-snapshot-dumper</id>
-    <name>Plugin display name here</name>
-    <vendor email="support@yourcompany.com" url="http://www.yourcompany.com">YourCompany</vendor>
+    <id>org.jetbrains.jps.build.snapshot.dumper</id>
+    <name>JPS Build Snapshot Dumper</name>
+    <vendor email="aleksei.cherepanov@jetbrains.com" url="https://www.jetbrains.com/">JetBrains</vendor>
 
     <description><![CDATA[
     Enter short description for your plugin here.<br>
@@ -11,12 +11,25 @@
     <!-- please see https://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
          on how to target different products -->
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.java</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
     </extensions>
 
     <actions>
-        <!-- Add your actions here -->
+        <group id="org.jetbrains.jps.build.snapshot.dumper.MyMenuGroup"
+               class="org.jetbrains.jps.build.snapshot.dumper.MyMenuGroup"
+               text="Debug JPS Build" popup="true">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="org.jetbrains.jps.build.snapshot.dumper.actions.CollectAction"
+                    class="org.jetbrains.jps.build.snapshot.dumper.actions.CollectAction"
+                    text="Dump JPS Build Snapshot">
+            </action>
+            <action id="org.jetbrains.jps.build.snapshot.dumper.actions.EnableLoggingAction"
+                    class="org.jetbrains.jps.build.snapshot.dumper.actions.EnableLoggingAction"
+                    text="Enable JPS Build Logging">
+            </action>
+        </group>
     </actions>
 </idea-plugin>

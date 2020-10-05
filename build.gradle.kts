@@ -18,7 +18,11 @@ dependencies {
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
-    version = "2020.2.2"
+    version = "IC-2020.2"
+    setPlugins("java")
+}
+configure<JavaPluginConvention> {
+    sourceCompatibility = JavaVersion.VERSION_1_8
 }
 tasks {
     compileKotlin {
