@@ -4,8 +4,8 @@ plugins {
     kotlin("jvm") version "1.4.10"
 }
 
-group = "org.example"
-version = "1.0-SNAPSHOT"
+group = "org.jetbrains.tooling"
+version = "0.1.0"
 
 repositories {
     mavenCentral()
@@ -13,7 +13,6 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    testCompile("junit", "junit", "4.12")
 }
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/

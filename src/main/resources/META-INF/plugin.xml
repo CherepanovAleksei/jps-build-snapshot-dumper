@@ -4,8 +4,13 @@
     <vendor email="aleksei.cherepanov@jetbrains.com" url="https://www.jetbrains.com/">JetBrains</vendor>
 
     <description><![CDATA[
-    Enter short description for your plugin here.<br>
-    <em>most HTML tags may be used</em>
+    Collect all useful directories and files for JPS build problem-solving and further investigation.
+    <br/>
+    <ul>
+        <li>Create zip archive with all JPS Build artifacts in the root of the project <i>(Tools -> Debug JPS Build -> Dump JPS Build Snapshot)</i></li>
+        <li>Enable JPS Logging <i>(Tools -> Debug JPS Build -> Enable JPS Build Logging)</i></li>
+    </ul>
+    Also you can find it via Actions
     ]]></description>
 
     <!-- please see https://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
@@ -14,7 +19,7 @@
     <depends>com.intellij.java</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Add your extensions here -->
+<!--        <postStartupActivity implementation="org.jetbrains.jps.build.snapshot.dumper.PreDebugActivity"/>-->
     </extensions>
 
     <actions>
