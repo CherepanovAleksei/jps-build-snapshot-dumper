@@ -32,7 +32,8 @@ import java.lang.management.ManagementFactory
 import java.text.SimpleDateFormat
 import java.util.*
 
-class Collector(private val project: Project) {
+class Collector(private val project: Project, private val balloonNotification: BalloonNotification) {
+    //TODO is it all?
     private val PROJECT_DIRS_TO_COLLECT = listOf(".idea", "out", "dist", "buildSrc/build/classes/java")
     private val LOG = Logger.getInstance("org.jetbrains.jps.build.snapshot.dumper.Collector")
     private val projectPath = project.basePath
@@ -43,74 +44,77 @@ class Collector(private val project: Project) {
                 collect()
             }
         }
-
+        //TODO catch
         val processIndicator = BackgroundableProcessIndicator(task)
         processIndicator.isIndeterminate = true
         ProgressManager.getInstance().runProcessWithProgressAsynchronously(task, processIndicator)
     }
 
-    private fun collect() {
+    fun collect() {
         val tempDir: File = FileUtil.createTempDirectory("jps_build_snapshot", ".tmp", true)
+        var isFailed = false
+
         try {
             copyProjectDirsTo(tempDir)
             copyCachesTo(tempDir)
             copyLogsTo(tempDir)
             addAboutInfo(tempDir)
-            val zipFile = File(projectPath, "jps_build_snapshot_" + UUID.randomUUID().toString() + ".zip")
-            Zipper.zip(zipFile, tempDir)
 
-            BalloonNotification().showBalloon(zipFile.absolutePath)
+            val zipFile = File(projectPath, "jps_build_snapshot_" + UUID.randomUUID().toString() + ".zip")
+            Zipper().zip(zipFile, tempDir)
+
+            balloonNotification.showSuccessBalloon(zipFile.absolutePath)
+        } catch (e: Exception) {
+            LOG.error(e)
+            isFailed = true
         } finally {
             tempDir.deleteRecursively()
         }
+
+        if(isFailed) balloonNotification.showCollectFailBalloon(this)
     }
 
-    private fun copyProjectDirsTo(tempDir: File) {
 
-        for (dir in PROJECT_DIRS_TO_COLLECT) {
-            val dirToCopy = File(projectPath, dir)
-            if(!dirToCopy.exists()) {
-                LOG.debug("$dir dir does not exists: skip it")
-                continue
-            }
-            val newDir = File(tempDir, dir)
-            FileUtil.copyDir(dirToCopy, newDir)
-            LOG.debug("$dir directory is added")
+    private fun copyProjectDirsTo(tempDir: File) {
+        for (dirName in PROJECT_DIRS_TO_COLLECT) {
+            val dirToCopy = File(projectPath, dirName)
+            val newDir = File(tempDir, dirName)
+            copyDir(dirName, dirToCopy, newDir)
         }
     }
 
     private fun copyCachesTo(tempDir: File) {
         val caches = File(BuildManager.getInstance().getProjectSystemDirectory(project)?.absolutePath!!)
-        if(!caches.exists()) {
-            LOG.debug("Caches dir does not exists: skip it")
-            return
-        }
         val newDir = File(tempDir, "compile-server")
-        FileUtil.copyDir(caches, newDir)
-        LOG.debug("Caches directory is added")
+        copyDir("Caches", caches, newDir)
     }
 
     private fun copyLogsTo(tempDir: File) {
         val logDirectory = BuildManager.getBuildLogDirectory()
-        if(!logDirectory.exists()) {
-            LOG.debug("Logs dir does not exists: skip it")
+        val newDir = File(tempDir, "logs")
+        copyDir("Logs", logDirectory, newDir)
+    }
+
+    private fun copyDir(dirName: String, fromDir: File, toDir: File){
+        if(!fromDir.exists()) {
+            LOG.debug("${fromDir.name} dir does not exists: skip it")
             return
         }
-        val newDir = File(tempDir, "logs")
-        FileUtil.copyDir(logDirectory, newDir)
-        LOG.debug("Logs directory is added")
+
+        FileUtil.copyDir(fromDir, toDir)
+        LOG.debug("$dirName directory is added")
     }
 
     private fun addAboutInfo(tempDir: File) {
         val aboutFile = File(tempDir, "about.txt")
-        //just copied from com/intellij/ide/actions/AboutPopup.java
+        // Just copied from com/intellij/ide/actions/AboutPopup.java
         val content = getAboutInfo() + getExtraInfo()
         LOG.debug(content)
         aboutFile.writeText(content)
         LOG.debug("AboutInfo file is added")
     }
 
-    private fun getAboutInfo(): String? {
+    private fun getAboutInfo(): String {
         var aboutInfo = ""
 
         val appInfo = ApplicationInfoEx.getInstanceEx() as ApplicationInfoImpl

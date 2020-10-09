@@ -13,10 +13,10 @@ class EnableLoggingAction : AnAction() {
         val logDirectory = BuildManager.getBuildLogDirectory()
         val buildLogProperties = File(logDirectory, LogSetup.LOG_CONFIG_FILE_NAME)
         val config: InputStream
-        if(buildLogProperties.exists()) {
-            config = FileInputStream(buildLogProperties)
+        config = if (buildLogProperties.exists()) {
+            FileInputStream(buildLogProperties)
         } else {
-            config = LogSetup.readDefaultLogConfig()
+            LogSetup.readDefaultLogConfig()
         }
 
         val properties = Properties().also {
