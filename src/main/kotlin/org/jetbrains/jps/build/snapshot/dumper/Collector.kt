@@ -25,15 +25,18 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.LicensingFacade
 import com.intellij.util.ObjectUtils
 import com.intellij.util.text.DateFormatUtil
+import git4idea.commands.Git
+import git4idea.commands.GitCommand
 import java.io.File
 import java.io.IOException
 import java.lang.management.GarbageCollectorMXBean
 import java.lang.management.ManagementFactory
 import java.text.SimpleDateFormat
 import java.util.*
+import git4idea.commands.GitLineHandler
+
 
 class Collector(private val project: Project, private val balloonNotification: BalloonNotification) {
-    //TODO is it all?
     private val PROJECT_DIRS_TO_COLLECT = listOf(".idea", "out", "dist", "buildSrc/build/classes/java")
     private val LOG = Logger.getInstance("org.jetbrains.jps.build.snapshot.dumper.Collector")
     private val projectPath = project.basePath
@@ -44,7 +47,7 @@ class Collector(private val project: Project, private val balloonNotification: B
                 collect()
             }
         }
-        //TODO catch
+
         val processIndicator = BackgroundableProcessIndicator(task)
         processIndicator.isIndeterminate = true
         ProgressManager.getInstance().runProcessWithProgressAsynchronously(task, processIndicator)
@@ -59,6 +62,7 @@ class Collector(private val project: Project, private val balloonNotification: B
             copyCachesTo(tempDir)
             copyLogsTo(tempDir)
             addAboutInfo(tempDir)
+            addGitInfo(tempDir)
 
             val zipFile = File(projectPath, "jps_build_snapshot_" + UUID.randomUUID().toString() + ".zip")
             Zipper().zip(zipFile, tempDir)
@@ -73,7 +77,6 @@ class Collector(private val project: Project, private val balloonNotification: B
 
         if(isFailed) balloonNotification.showCollectFailBalloon(this)
     }
-
 
     private fun copyProjectDirsTo(tempDir: File) {
         for (dirName in PROJECT_DIRS_TO_COLLECT) {
@@ -103,6 +106,38 @@ class Collector(private val project: Project, private val balloonNotification: B
 
         FileUtil.copyDir(fromDir, toDir)
         LOG.debug("$dirName directory is added")
+    }
+
+    private fun addGitInfo(tempDir: File) {
+        addChangesPatch(tempDir)
+        addGitStatusInfo(tempDir)
+    }
+
+    private fun addChangesPatch(tempDir: File) {
+        val patchFile = File(tempDir, "git-changes-patch.txt")
+
+        val diff = GitLineHandler(project, File(projectPath!!), GitCommand.DIFF)
+        diff.addParameters("HEAD")
+        diff.setStdoutSuppressed(true)
+        diff.setStderrSuppressed(true)
+        diff.setSilent(true)
+
+        val content: String = Git.getInstance().runCommand(diff).getOutputOrThrow()
+
+        LOG.debug(content)
+        patchFile.writeText(content)
+        LOG.debug("AboutInfo file is added")
+    }
+
+    private fun addGitStatusInfo(tempDir: File) {
+        val gitInfoFile = File(tempDir, "git-status-info.txt")
+
+        val status = GitLineHandler(project, File(projectPath!!), GitCommand.STATUS)
+        val content: String = Git.getInstance().runCommand(status).getOutputOrThrow()
+
+        LOG.debug(content)
+        gitInfoFile.writeText(content)
+        LOG.debug("Git branch info file is added")
     }
 
     private fun addAboutInfo(tempDir: File) {
