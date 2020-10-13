@@ -34,12 +34,14 @@ import java.lang.management.ManagementFactory
 import java.text.SimpleDateFormat
 import java.util.*
 import git4idea.commands.GitLineHandler
+import java.util.stream.Collectors
 
 
-class Collector(private val project: Project, private val balloonNotification: BalloonNotification) {
+class Collector(private val project: Project, private val additionalFoldersToCollect: String = "") {
     private val PROJECT_DIRS_TO_COLLECT = listOf(".idea", "out", "dist", "buildSrc/build/classes/java")
     private val LOG = Logger.getInstance("org.jetbrains.jps.build.snapshot.dumper.Collector")
     private val projectPath = project.basePath
+    private val balloonNotification = BalloonNotification()
 
     fun collectInBackground() {
         val task = object : Task.Backgroundable(project, "Collecting info about JPS build") {
@@ -79,38 +81,49 @@ class Collector(private val project: Project, private val balloonNotification: B
     }
 
     private fun copyProjectDirsTo(tempDir: File) {
-        for (dirName in PROJECT_DIRS_TO_COLLECT) {
+        if(additionalFoldersToCollect.isBlank()) {
+            LOG.debug("There are no additional paths. Skip it.")
+            return
+        }
+
+        val additionalFolders = additionalFoldersToCollect.split(",")
+            .stream()
+            .map { it.trim() }
+            .collect(Collectors.toList())
+
+        for (dirName in additionalFolders + PROJECT_DIRS_TO_COLLECT) {
             val dirToCopy = File(projectPath, dirName)
             val newDir = File(tempDir, dirName)
-            copyDir(dirName, dirToCopy, newDir)
+            copyFileOrDir(dirName, dirToCopy, newDir)
         }
     }
 
     private fun copyCachesTo(tempDir: File) {
         val caches = File(BuildManager.getInstance().getProjectSystemDirectory(project)?.absolutePath!!)
         val newDir = File(tempDir, "compile-server")
-        copyDir("Caches", caches, newDir)
+        copyFileOrDir("Caches", caches, newDir)
     }
 
     private fun copyLogsTo(tempDir: File) {
         val logDirectory = BuildManager.getBuildLogDirectory()
         val newDir = File(tempDir, "logs")
-        copyDir("Logs", logDirectory, newDir)
+        copyFileOrDir("Logs", logDirectory, newDir)
     }
 
-    private fun copyDir(dirName: String, fromDir: File, toDir: File){
+    private fun copyFileOrDir(dirName: String, fromDir: File, toDir: File){
         if(!fromDir.exists()) {
             LOG.debug("${fromDir.name} dir does not exists: skip it")
             return
         }
 
-        FileUtil.copyDir(fromDir, toDir)
+        FileUtil.copyFileOrDir(fromDir, toDir)
         LOG.debug("$dirName directory is added")
     }
 
     private fun addGitInfo(tempDir: File) {
         addChangesPatch(tempDir)
         addGitStatusInfo(tempDir)
+        addCommitInfo(tempDir)
     }
 
     private fun addChangesPatch(tempDir: File) {
@@ -127,6 +140,18 @@ class Collector(private val project: Project, private val balloonNotification: B
         LOG.debug(content)
         patchFile.writeText(content)
         LOG.debug("AboutInfo file is added")
+    }
+
+    private fun addCommitInfo(tempDir: File) {
+        val gitInfoFile = File(tempDir, "git-commit-info.txt")
+
+        val commit = GitLineHandler(project, File(projectPath!!), GitCommand.LOG)
+        commit.addParameters("-n 1")
+        val content: String = Git.getInstance().runCommand(commit).getOutputOrThrow()
+
+        LOG.debug(content)
+        gitInfoFile.writeText(content)
+        LOG.debug("Git commit info file is added")
     }
 
     private fun addGitStatusInfo(tempDir: File) {

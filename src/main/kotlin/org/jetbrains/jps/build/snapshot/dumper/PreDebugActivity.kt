@@ -8,6 +8,7 @@ class PreDebugActivity : StartupActivity {
     private val LOG = Logger.getInstance("org.jetbrains.jps.build.snapshot.dumper.PreDebugActivity")
 
     override fun runActivity(project: Project) {
-        Collector(project, BalloonNotification()).collectInBackground()
+        val dialog = CollectDialog(project)
+        dialog.show()
     }
 }

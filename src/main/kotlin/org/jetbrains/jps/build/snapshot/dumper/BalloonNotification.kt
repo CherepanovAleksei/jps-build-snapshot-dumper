@@ -1,9 +1,9 @@
 package org.jetbrains.jps.build.snapshot.dumper
 
+import com.intellij.ide.actions.RevealFileAction
 import com.intellij.notification.*
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.project.Project
 import java.io.File
 
 class BalloonNotification {
@@ -11,25 +11,21 @@ class BalloonNotification {
     private val notificationGroup = NotificationGroup(displayId, NotificationDisplayType.BALLOON, true)
     private var notification: Notification? = null
 
-    fun showCollectBalloon(project: Project) {
-        val title = "Collect JPS build info"
-        val content = "This action will collect all JPS build artifacts: " +
-                "all build output (like out, dist, buildSrc folders), " +
-                "logs and build caches."
-        val action = object : AnAction("Collect", "", null) {
-            override fun actionPerformed(e: AnActionEvent) {
-                notification?.expire()
-                Collector(project, this@BalloonNotification).collectInBackground()
-            }
-        }
-
-        showBalloon(title, content, action)
-    }
-
     fun showSuccessBalloon(pathToArchive: String) {
         val title = "JPS Build Snapshot successfully dumped"
         val content = "Zip archive: $pathToArchive"
-        val action = object : AnAction("Delete archive", "", null) {
+
+        val revealAction = object : AnAction(RevealFileAction.getActionName(), "", null) {
+            override fun actionPerformed(e: AnActionEvent) {
+                val archive = File(pathToArchive)
+                if (archive.exists()) {
+                    notification?.hideBalloon()
+                    RevealFileAction.openFile(archive)
+                }
+            }
+        }
+
+        val deleteAction = object : AnAction("Delete archive", "", null) {
             override fun actionPerformed(e: AnActionEvent) {
                 notification?.expire()
                 val archive = File(pathToArchive)
@@ -37,7 +33,7 @@ class BalloonNotification {
             }
         }
 
-        showBalloon(title, content, action)
+        showBalloon(title, content, arrayListOf(revealAction, deleteAction))
     }
 
     fun showNoProjectBalloon() {
@@ -56,13 +52,15 @@ class BalloonNotification {
             }
         }
 
-        showBalloon(title, content, action)
+        showBalloon(title, content, arrayListOf(action))
     }
 
-    private fun showBalloon(title: String, content: String = "", action: AnAction? = null) {
+    private fun showBalloon(title: String, content: String = "", actions: ArrayList<AnAction> = arrayListOf()) {
         notification = notificationGroup.createNotification(title, content, NotificationType.INFORMATION)
-        if(action!=null){
-            notification!!.addAction(action)
+        if(actions.isNotEmpty()){
+            for (action in actions) {
+                notification!!.addAction(action)
+            }
         }
         Notifications.Bus.notify(notification!!)
     }
