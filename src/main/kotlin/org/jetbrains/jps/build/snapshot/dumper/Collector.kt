@@ -11,6 +11,7 @@ import com.intellij.openapi.application.ex.ApplicationInfoEx
 import com.intellij.openapi.application.impl.ApplicationInfoImpl
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.extensions.ExtensionPointName
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
@@ -27,13 +28,18 @@ import com.intellij.util.ObjectUtils
 import com.intellij.util.text.DateFormatUtil
 import git4idea.commands.Git
 import git4idea.commands.GitCommand
+import git4idea.commands.GitLineHandler
+import org.gradle.internal.FileUtils
+import org.gradle.internal.SystemProperties
+import org.jetbrains.plugins.gradle.GradleManager
+import org.jetbrains.plugins.gradle.settings.GradleSettings
+import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
 import java.io.IOException
 import java.lang.management.GarbageCollectorMXBean
 import java.lang.management.ManagementFactory
 import java.text.SimpleDateFormat
 import java.util.*
-import git4idea.commands.GitLineHandler
 import java.util.stream.Collectors
 
 
@@ -79,6 +85,52 @@ class Collector(private val project: Project, private val additionalFoldersToCol
         }
 
         if(isFailed) balloonNotification.showCollectFailBalloon(this)
+    }
+
+    private fun copyGradleDaemonLogs(tempDir: File) {
+        // Determine gradle version
+        val gradleProjectSettings = GradleSettings.getInstance(project).getLinkedProjectSettings(projectPath!!)
+        if(gradleProjectSettings == null) {
+            LOG.debug("Can't get gradle project settings. Skip Gradle daemon logs collecting")
+            return
+        }
+        val gradleVersion = gradleProjectSettings.resolveGradleVersion().version
+
+        // Determine gradle home path
+        val gradleManager = ExternalSystemApiUtil.getManager(GradleConstants.SYSTEM_ID) as GradleManager
+        var gradleUserHome = gradleManager.settingsProvider.`fun`(project).serviceDirectoryPath
+        if (gradleUserHome == null) {
+            gradleUserHome = System.getProperty("gradle.user.home")
+            if (gradleUserHome == null) {
+                gradleUserHome = System.getenv("GRADLE_USER_HOME")
+                if (gradleUserHome == null) {
+                    val defaultGradleHome = File(SystemProperties.getInstance().userHome + "/.gradle")
+                    gradleUserHome = defaultGradleHome.absolutePath
+                }
+            }
+        }
+        if(gradleUserHome == null) {
+            LOG.debug("Can't get gradle user home directory. Skip Gradle daemon logs collecting")
+            return
+        }
+        val gradleUserHomeFile = FileUtils.canonicalize(File(gradleUserHome))
+
+
+        val gradleLogsDir = File(gradleUserHomeFile, "daemon/$gradleVersion/")
+        val logs = gradleLogsDir.listFiles()?.filter { it.name.matches(Regex(".*.log")) }
+        if(logs == null) {
+            LOG.debug("There are no logs for Gradle Daemon on your system. Skip Gradle daemon logs collecting")
+            return
+        }
+        val sorted = logs.toMutableList().sortedBy { it.lastModified() }
+        val gradleDaemonLastLog = sorted.last()
+
+
+        val newDir = File(tempDir, "gradleDaemonLogs").also {
+            it.mkdirs()
+        }
+
+        copyFileOrDir("Gradle Logs", gradleDaemonLastLog, File(newDir, gradleDaemonLastLog.name))
     }
 
     private fun copyKotlinDaemonLogs(tempDir: File) {
@@ -228,7 +280,12 @@ class Collector(private val project: Project, private val additionalFoldersToCol
 
 
         val properties = System.getProperties()
-        val javaVersion = properties.getProperty("java.runtime.version", properties.getProperty("java.version", "unknown"))
+        val javaVersion = properties.getProperty(
+            "java.runtime.version", properties.getProperty(
+                "java.version",
+                "unknown"
+            )
+        )
         val arch = properties.getProperty("os.arch", "")
         aboutInfo += "${IdeBundle.message("about.box.jre", javaVersion, arch)}\n"
 
