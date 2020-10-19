@@ -65,6 +65,7 @@ class Collector(private val project: Project, private val additionalFoldersToCol
             copyLogsTo(tempDir)
             addAboutInfo(tempDir)
             addGitInfo(tempDir)
+            copyKotlinDaemonLogs(tempDir)
 
             val zipFile = File(projectPath, "jps_build_snapshot_" + UUID.randomUUID().toString() + ".zip")
             Zipper().zip(zipFile, tempDir)
@@ -78,6 +79,24 @@ class Collector(private val project: Project, private val additionalFoldersToCol
         }
 
         if(isFailed) balloonNotification.showCollectFailBalloon(this)
+    }
+
+    private fun copyKotlinDaemonLogs(tempDir: File) {
+        val tempSystemFolder = File(System.getenv("TMPDIR"))
+        if(tempSystemFolder.exists()) {
+            val logs = tempSystemFolder.listFiles()?.filter{it.name.matches(Regex("kotlin-daemon.*.log")) }
+            if(logs == null) {
+                LOG.debug("There are no logs for Kotlin Daemon on your system. Skip Kotlin daemon logs collecting")
+                return
+            }
+
+            val kotlinDaemonLastLog = logs.sorted().last()
+
+            val newDir = File(tempDir, "kotlinDaemonLogs")
+            copyFileOrDir("KotlinDaemonLogs", kotlinDaemonLastLog, newDir)
+        } else {
+            LOG.debug("TMPDIR is not set on your system. Skip Kotlin daemon logs collecting")
+        }
     }
 
     private fun copyProjectDirsTo(tempDir: File) {
