@@ -123,14 +123,15 @@ class Collector(private val project: Project, private val collectDialog: Collect
             return
         }
         val sorted = logs.toMutableList().sortedBy { it.lastModified() }
-        val gradleDaemonLastLog = sorted.last()
+        val gradleDaemonLastLogs = sorted.takeLast(5)
 
 
         val newDir = File(tempDir, "gradleDaemonLogs").also {
             it.mkdirs()
         }
-
-        copyFileOrDir("Gradle Logs", gradleDaemonLastLog, File(newDir, gradleDaemonLastLog.name))
+        for(gradleDaemonLastLog in gradleDaemonLastLogs) {
+            copyFileOrDir("Gradle Logs", gradleDaemonLastLog, File(newDir, gradleDaemonLastLog.name))
+        }
     }
 
     private fun copyKotlinDaemonLogs(tempDir: File) {
