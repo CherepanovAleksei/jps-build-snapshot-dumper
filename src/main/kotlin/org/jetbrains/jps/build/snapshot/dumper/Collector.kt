@@ -43,8 +43,7 @@ import java.util.*
 import java.util.stream.Collectors
 
 
-class Collector(private val project: Project, private val additionalFoldersToCollect: String = "") {
-    private val PROJECT_DIRS_TO_COLLECT = listOf(".idea", "out", "dist", "buildSrc/build/classes/java")
+class Collector(private val project: Project, private val collectDialog: CollectDialog) {
     private val LOG = Logger.getInstance("org.jetbrains.jps.build.snapshot.dumper.Collector")
     private val projectPath = project.basePath
     private val balloonNotification = BalloonNotification()
@@ -67,11 +66,12 @@ class Collector(private val project: Project, private val additionalFoldersToCol
 
         try {
             copyProjectDirsTo(tempDir)
-            copyCachesTo(tempDir)
-            copyLogsTo(tempDir)
-            addAboutInfo(tempDir)
-            addGitInfo(tempDir)
-            copyKotlinDaemonLogs(tempDir)
+            if(collectDialog.cachesCheckBox.isSelected) copyCachesTo(tempDir)
+            if(collectDialog.buildLogsCheckBox.isSelected) copyLogsTo(tempDir)
+            if(collectDialog.aboutInfoCheckBox.isSelected) addAboutInfo(tempDir)
+            if(collectDialog.gitBranchCheckBox.isSelected) addGitInfo(tempDir)
+            if(collectDialog.kotlinDaemonLogsCheckBox.isSelected) copyKotlinDaemonLogs(tempDir)
+            if(collectDialog.gradleDaemonLogsCheckBox.isSelected) copyGradleDaemonLogs(tempDir)
 
             val zipFile = File(projectPath, "jps_build_snapshot_" + UUID.randomUUID().toString() + ".zip")
             Zipper().zip(zipFile, tempDir)
@@ -152,20 +152,21 @@ class Collector(private val project: Project, private val additionalFoldersToCol
     }
 
     private fun copyProjectDirsTo(tempDir: File) {
-        if(additionalFoldersToCollect.isBlank()) {
+        val foldersToCollect = collectDialog.projectFoldersTextField.text
+        if(foldersToCollect.isBlank()) {
             LOG.debug("There are no additional paths. Skip it.")
             return
         }
 
-        val additionalFolders = additionalFoldersToCollect.split(",")
+        val projectFolders = foldersToCollect.split(",")
             .stream()
             .map { it.trim() }
             .collect(Collectors.toList())
 
-        for (dirName in additionalFolders + PROJECT_DIRS_TO_COLLECT) {
-            val dirToCopy = File(projectPath, dirName)
-            val newDir = File(tempDir, dirName)
-            copyFileOrDir(dirName, dirToCopy, newDir)
+        for (projectFolder in projectFolders) {
+            val dirToCopy = File(projectPath, projectFolder)
+            val newDir = File(tempDir, "project/$projectFolder")
+            copyFileOrDir(projectFolder, dirToCopy, newDir)
         }
     }
 
@@ -177,7 +178,7 @@ class Collector(private val project: Project, private val additionalFoldersToCol
 
     private fun copyLogsTo(tempDir: File) {
         val logDirectory = BuildManager.getBuildLogDirectory()
-        val newDir = File(tempDir, "logs")
+        val newDir = File(tempDir, "buildLogs")
         copyFileOrDir("Logs", logDirectory, newDir)
     }
 
@@ -192,7 +193,7 @@ class Collector(private val project: Project, private val additionalFoldersToCol
     }
 
     private fun addGitInfo(tempDir: File) {
-        addChangesPatch(tempDir)
+        if(collectDialog.gitPatchCheckBox.isSelected) addChangesPatch(tempDir)
         addGitStatusInfo(tempDir)
         addCommitInfo(tempDir)
     }
