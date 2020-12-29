@@ -135,7 +135,13 @@ class Collector(private val project: Project, private val collectDialog: Collect
     }
 
     private fun copyKotlinDaemonLogs(tempDir: File) {
-        val tempSystemFolder = File(System.getenv("TMPDIR"))
+        val tempSystemFolderName = System.getenv("TMPDIR")
+        if(tempSystemFolderName == null) {
+            LOG.debug("TMPDIR is not set on your system. Skip Kotlin daemon logs collecting")
+            return
+        }
+
+        val tempSystemFolder = File(tempSystemFolderName)
         if(tempSystemFolder.exists()) {
             val logs = tempSystemFolder.listFiles()?.filter{it.name.matches(Regex("kotlin-daemon.*.log")) }
             if(logs == null) {
@@ -148,7 +154,7 @@ class Collector(private val project: Project, private val collectDialog: Collect
             val newDir = File(tempDir, "kotlinDaemonLogs")
             copyFileOrDir("KotlinDaemonLogs", kotlinDaemonLastLog, newDir)
         } else {
-            LOG.debug("TMPDIR is not set on your system. Skip Kotlin daemon logs collecting")
+            LOG.debug("$tempSystemFolderName does not exist. Skip Kotlin daemon logs collecting")
         }
     }
 
